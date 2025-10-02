@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-portal-svc
+  namespace: myapp-portal
+spec:
+  selector:
+    app: myapp-portal
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 3000

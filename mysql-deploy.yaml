@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-mysql
+  namespace: myapp-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp-mysql
+  template:
+    metadata:
+      labels:
+        app: myapp-mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: myapp-db-secret
+              key: password
+        - name: MYSQL_DATABASE
+          value: "myapp"
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-mysql-svc
+  namespace: myapp-portal
+spec:
+  selector:
+    app: myapp-mysql
+  ports:
+  - port: 3306
+    targetPort: 3306

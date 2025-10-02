@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-portal
+  namespace: myapp-portal
+  labels:
+    app: myapp-portal
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myapp-portal
+  template:
+    metadata:
+      labels:
+        app: myapp-portal
+    spec:
+      containers:
+      - name: myapp-portal
+        image: nileshpawar0212/myapp-portal:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: DB_HOST
+          value: "myapp-mysql-svc.myapp-portal.svc.cluster.local"
+        - name: DB_NAME
+          value: "myapp"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: myapp-db-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: myapp-db-secret
+              key: password

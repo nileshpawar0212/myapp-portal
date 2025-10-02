@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Request Portal</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .connected { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .success { background: #d1ecf1; color: #0c5460; }
+        textarea { width: 100%; height: 150px; margin: 10px 0; }
+        input { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .section { margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 4px; }
+        .results { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Database Request Portal</h1>
+    
+    <div id="status" class="status">Checking connection...</div>
+    
+    <div class="section">
+        <h3>Create Database User</h3>
+        <input type="text" id="dbName" placeholder="Database Name">
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="createUser()">Create User</button>
+        <div id="createResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>Database Users</h3>
+        <button onclick="showUsers()">Show Existing Users</button>
+        <div id="usersList"></div>
+    </div>
+    
+    <div class="section">
+        <h3>Execute Query</h3>
+        <textarea id="queryInput" placeholder="Enter your SQL query here..."></textarea>
+        <button onclick="executeQuery()">Execute Query</button>
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                const statusDiv = document.getElementById('status');
+                
+                if (data.connected) {
+                    statusDiv.className = 'status connected';
+                    statusDiv.textContent = `Connected to database. Server time: ${data.time}`;
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = `Connection failed: ${data.error}`;
+                }
+            } catch (err) {
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').textContent = `Status check failed: ${err.message}`;
+            }
+        }
+
+        async function executeQuery() {
+            const query = document.getElementById('queryInput').value.trim();
+            if (!query) return alert('Please enter a query');
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<p>Executing query...</p>';
+            
+            try {
+                const response = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayResults(data.data);
+                } else {
+                    resultsDiv.innerHTML = `<div class="status error">Error: ${data.error}</div>`;
+                }
+            } catch (err) {
+                resultsDiv.innerHTML = `<div class="status error">Request failed: ${err.message}</div>`;
+            }
+        }
+
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data || data.length === 0) {
+                resultsDiv.innerHTML = '<p>No results returned.</p>';
+                return;
+            }
+            
+            const keys = Object.keys(data[0]);
+            let html = '<table><thead><tr>';
+            keys.forEach(key => html += `<th>${key}</th>`);
+            html += '</tr></thead><tbody>';
+            
+            data.forEach(row => {
+                html += '<tr>';
+                keys.forEach(key => html += `<td>${row[key] || ''}</td>`);
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            resultsDiv.innerHTML = html;
+        }
+
+        async function createUser() {
+            const dbName = document.getElementById('dbName').value.trim();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!dbName || !username || !password) {
+                return alert('Please fill all fields');
+            }
+            
+            const resultDiv = document.getElementById('createResult');
+            resultDiv.innerHTML = '<p>Creating user...</p>';
+            
+            try {
+                const response = await fetch('/api/create-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dbName, username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `<div class="status success">${data.message}</div>`;
+                    document.getElementById('dbName').value = '';
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                } else {
+                    resultDiv.innerHTML = `<div class="status error">Error: ${data.error}</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="status error">Request failed: ${err.message}</div>`;
+            }
+        }
+        
+        async function showUsers() {
+            const usersDiv = document.getElementById('usersList');
+            usersDiv.innerHTML = '<p>Loading users...</p>';
+            
+            try {
+                const response = await fetch('/api/users');
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (data.users.length === 0) {
+                        usersDiv.innerHTML = '<p>No users found.</p>';
+                    } else {
+                        let html = '<table><thead><tr><th>Username</th><th>Host</th></tr></thead><tbody>';
+                        data.users.forEach(user => {
+                            html += `<tr><td>${user.User}</td><td>${user.Host}</td></tr>`;
+                        });
+                        html += '</tbody></table>';
+                        usersDiv.innerHTML = html;
+                    }
+                } else {
+                    usersDiv.innerHTML = `<div class="status error">Error: ${data.error}</div>`;
+                }
+            } catch (err) {
+                usersDiv.innerHTML = `<div class="status error">Request failed: ${err.message}</div>`;
+            }
+        }
+
+        checkStatus();
+        setInterval(checkStatus, 30000);
+    </script>
+</body>
+</html>
