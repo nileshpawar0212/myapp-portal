@@ -5,7 +5,7 @@ pipeline {
         DOCKER_IMAGE = 'nileshpawar0212/myapp-portal'
         DOCKER_TAG = "${BUILD_NUMBER}"
         KUBECONFIG = credentials('kubeconfig')
-        DOCKER_REGISTRY = credentials('docker-hub')
+        DOCKER_REGISTRY = credentials('docker-hub-credentials')
     }
     
     stages {
@@ -18,8 +18,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'docker-hub') {
-                        def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    def image = docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                         image.push()
                         image.push('latest')
                     }
@@ -90,7 +92,9 @@ pipeline {
             echo 'Deployment failed!'
         }
         always {
-            cleanWs()
+            node {
+                cleanWs()
+            }
         }
     }
 }
