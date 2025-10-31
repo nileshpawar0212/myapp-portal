@@ -6,12 +6,13 @@ pipeline {
         DOCKER_TAG = "${BUILD_NUMBER}"
         KUBECONFIG = credentials('kubeconfig')
         DOCKER_REGISTRY = credentials('docker-hub')
+        GIT_REPO = 'https://github.com/nileshpawar0212/myapp-portal.git'
     }
     
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                git branch: 'main', url: "${GIT_REPO}"
             }
         }
         
