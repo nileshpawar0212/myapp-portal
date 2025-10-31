@@ -42,11 +42,20 @@ pipeline {
             steps {
                 script {
                     sh """
-                        kubectl apply -f namespace.yaml
-                        kubectl apply -f secret.yaml
-                        kubectl apply -f mysql-deploy.yaml
+                        # Check and create namespace if not exists
+                        kubectl get namespace myapp-portal || kubectl apply -f namespace.yaml
+                        
+                        # Check and create secret if not exists
+                        kubectl get secret myapp-db-secret -n myapp-portal || kubectl apply -f secret.yaml
+                        
+                        # Check and create MySQL deployment if not exists
+                        kubectl get deployment myapp-mysql -n myapp-portal || kubectl apply -f mysql-deploy.yaml
+                        
+                        # Always update app deployment (for new image)
                         kubectl apply -f myapp-portal-deploy.yaml
-                        kubectl apply -f myapp-portal-svc.yaml
+                        
+                        # Check and create service if not exists
+                        kubectl get service myapp-portal-svc -n myapp-portal || kubectl apply -f myapp-portal-svc.yaml
                     """
                 }
             }
